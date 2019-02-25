@@ -1,0 +1,382 @@
+---
+title: "Homework 1 - Summer Olympics"
+author: "Kalyani Subbiah"
+date: '2019-02-17'
+output:
+  html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#### 1. Medal Counts over time
+
+```{r}
+library(ggplot2)
+library(DT)
+library(dplyr)
+library(plotly)
+```
+
+a) Combine the information in the three spreadsheets `athletes_and_events.csv`, `noc_regions.csv`, and  `gdp_pop.csv`. Note, that the `noc_regions.csv` is the set all NOC regions, while `gdp_pop.csv` only contains a snapshot of the current set of countries. You have to decide what to do with some [countries that competed under different designations in the past (e.g. Germany and Russia)](https://en.wikipedia.org/wiki/All-time_Olympic_Games_medal_table) and some defunct countries and whether and how to combine their totals. Make sure to be clear about your decisions here, so that the editor (and potentially a user of your visualizations) understands what you did.
+
+Decision: Keep original names because the boundaries of the countries often change with the name changes. For example, the Soviet Union consisted of Russia and several other countries, as did Yugoslavia. Conversely, West Germany and East Germany combined to form Germany. 
+```{r}
+ath = read.csv("https://raw.githubusercontent.com/qmss-gr5063-2019/course_materials/master/Exercises/03_olympics/athletes_and_events.csv?token=AeYatLKEdXzVZO7Qb6vq5MGD9tMsgut4ks5cfYcIwA%3D%3D")
+noc = read.csv("https://raw.githubusercontent.com/qmss-gr5063-2019/course_materials/master/Exercises/03_olympics/noc_regions.csv?token=AeYatOuB_ZcjRQchfHdr4hmwMuBIKnIzks5cfYcxwA%3D%3D")
+gdp = read.csv("https://raw.githubusercontent.com/qmss-gr5063-2019/course_materials/master/Exercises/03_olympics/gdp_pop.csv?token=AeYatCJgf39wEd-qOm058uaVbWu-nEByks5cfYciwA%3D%3D")
+```
+
+```{r}
+master = merge(x = ath, y = noc, by = "NOC", all= TRUE)
+gdp$NOC <- gdp$Code
+master = merge(x = master, y = gdp, by = "NOC", all= TRUE)
+master= unique(master)
+```
+
+
+
+b) Calculate a summary of how many summer games each country competed in, and how many medals of each type the country won. Use that summary to provide a **visual comparison of medal count by country**. 
+
+Feel free to focus on smaller set of countries (say the top 10), highlight the United States or another country of your choice, consider gender of the medal winners etc. to make the visualization interesting. 
+
+Please provide one visualization showing an over time comparison and one in which a total medal count (across all Summer Olympics) is used. Briefly discuss which visualization you recommend to your editor and why.
+
+-------
+How many summer games did each country commpete in?
+```{r}
+summer = filter(master, Season == "Summer")
+by_year  = summer %>%
+  group_by(Year, NOC, add = TRUE)
+by_year = by_year %>% select(Year, NOC)
+by_year = unique(by_year)
+num_summerolympics = table(by_year$NOC)
+num_summerolympics = data.frame(num_summerolympics)
+names(num_summerolympics) <- c("NOC", "Number")
+#sorted by number of olympics they participated in
+nums_sorted = num_summerolympics[order(num_summerolympics$Number, decreasing=T),]
+datatable(nums_sorted)
+```
+
+
+
+How many medals of each type did each country win?
+```{r}
+summer_medal = subset(summer, Medal != 'NA')
+summer_medal
+by_medal  = summer_medal %>%
+  group_by(Medal, NOC)
+num_medal = table(by_medal$Medal, by_medal$NOC)
+num_medal = data.frame(num_medal)
+names(num_medal) <- c("Medal", "NOC", "Number")
+
+#Extracting medal data for 10 countries
+NOCs = c("USA", "RUS", "GER","AUS", "CHN",  "IND", "CAN","NOR", "FIN", "AUT")
+summer_top = subset(num_medal, NOC %in% NOCs)
+summer_top
+summer_top$Medal <- factor(summer_top$Medal,levels = c('Gold', 'Silver', 'Bronze'))
+
+medal_plot = ggplot(summer_top, aes(x=NOC, y=Number, fill=Medal, order=Medal)) + geom_bar(stat='identity') + scale_fill_manual(values=c("gold", "grey", "brown"))
+
+medal_plot +  scale_x_discrete(limits=c("USA", "GER","AUS",  "CHN","RUS","CAN","NOR", "FIN", "IND","AUT"), labels = c("United States", "Germany","Australia",  "China","Russia","Canada","Norway", "Finland", "India","Austria")) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + xlab('') + ylab('Total Number of Medals') + coord_flip() + ggtitle('Total Medals awarded by Country Accross all Summer Olympics')
+```
+
+
+By Gender
+
+```{r}
+by_sex  = summer_medal %>%
+  group_by(Sex, NOC)
+num_sex = table(by_sex$Sex, by_sex$NOC)
+num_sex = data.frame(num_sex)
+num_sex
+names(num_sex) <- c("Sex", "NOC", "Number")
+NOCs = c("USA",  "GER","AUS",  "CHN","RUS","CAN","NOR", "FIN", "IND","AUT")
+num_sex_top = subset(num_sex, NOC %in% NOCs)
+num_sex_top
+num_sex_top
+sex_plot = ggplot(num_sex_top, aes(x=NOC, y=Number,colour=Sex)) + geom_point() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + scale_x_discrete(limits=c("USA",  "GER","AUS",  "CHN","RUS","CAN","NOR", "FIN", "IND","AUT"), labels = c("United States", "Germany","Australia",  "China","Russia","Canada","Norway", "Finland", "India","Austria")) + xlab('') + ylab('Total Number of Medals') + coord_flip() + ggtitle('Total Medals awarded by Country and Gender Accross all Summer Olympics')
+sex_plot
+```
+Over Time
+
+
+
+```{r}
+NOCs = c('USA', 'RUS', 'AUS', 'CHN')
+
+num_year_comp = table(summer_medal$Year, summer_medal$NOC)
+num_year_comp
+num_year_comp = data.frame(num_year_comp)
+num_year_comp
+names(num_year_comp) = c("Year", "NOC", "Number")
+
+num_year_comp
+num_year_comp = subset(num_year_comp,NOC %in% NOCs)
+num_year_comp
+num_year_comp$Year = substring(as.Date(num_year_comp$Year, format = "%Y"), 0,4)
+num_year_comp
+num_year_comp = subset(num_year_comp, Year >= 1984)
+
+year_plot1 = ggplot(num_year_comp, aes(x=Year, y=Number, group = NOC, colour = NOC)) + geom_point() + geom_line()
+
+year_plot1 + theme(axis.text.x = element_text(angle = 90, hjust = 1))   + xlab('') + ylab('Total Number of Medals')  + scale_colour_discrete(guide = guide_legend(reverse=TRUE, title=NULL), labels=c("Australia", "China", "Russia", "United States")) + ggtitle('Total Medals awarded by Country and Year')
+
+```
+#### 2. Medal Counts adjusted by Population, GDP
+
+There are different ways to calculate "success". Consider the following variants and choose one (and make sure your choice is clear in the visualization):  
+  - Just consider gold medals.  
+  - Simply add up the number of medals of different types.    
+  - Create an index in which medals are valued differently. (gold=3, silver=2, bronze=1).   
+  - A reasonable other way that you prefer.
+  
+Now, adjust the ranking of medal success by (a) GDP per capita and (b) population. You have now three rankings: unadjusted ranking, adjusted by GDP per capita, and adjusted by population.
+
+Visualize how these rankings differ. Feel free to highlight a specific pattern (e.g. "South Korea -- specialization reaps benefits" or "The superpowers losing their grip").
+
+```{r}
+num_year_comp = table(summer_medal$Year, summer_medal$Medal, summer_medal$NOC)
+num_year_comp = data.frame(num_year_comp)
+names(num_year_comp) = c("Year", "Medal", "NOC", "Number")
+NOCs = c("USA",  "GER","AUS",  "CHN","RUS","CAN","NOR", "FIN", "IND","AUT")
+gold_comp =  subset(num_year_comp,Medal == 'Gold')
+gold_comp =  subset(gold_comp,NOC %in% NOCs)
+gold_plot = ggplot(gold_comp, aes(x=NOC, y=Number)) + geom_bar(stat='identity', fill = 'gold')
+num_year_comp                  
+gold_plot + theme(axis.text.x = element_text(angle = 90, hjust = 1)) +   scale_x_discrete(limits=c("USA",  "GER","AUS",  "CHN","RUS","CAN","NOR", "FIN", "IND","AUT"), labels = c("United States", "Germany","Australia",  "China","Russia","Canada","Norway", "Finland", "India","Austria")) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + xlab('') + ylab('Total Number of Gold Medals') + ggtitle('Total Gold Medals awarded by Country Accross all Summer Olympics')
+```
+
+```{r}
+summer_medal_gold = subset(summer_medal, Medal == 'Gold')
+gold_comp1 <- unique(data.frame(summer_medal_gold$NOC, summer_medal_gold$Population.x))
+names(gold_comp1) = c("NOC", "Population")
+
+gold_comp2 <- table(summer_medal$NOC, summer_medal$Medal)
+gold_comp2 = data.frame(gold_comp2)
+names(gold_comp2) = c("NOC", "Medal", "Number")
+gold_comp2= subset(gold_comp2, Medal == 'Gold')
+gold_comp1
+gold_comp = merge(gold_comp1, gold_comp2, by = 'NOC')
+
+gold_comp <- transform(gold_comp, GoldByPopulation = Number*1000000/(Population))
+gold_comp = subset(gold_comp, GoldByPopulation != Inf)
+gold_comp = gold_comp[order(gold_comp$GoldByPopulation, decreasing=T),]
+gold_comp3 <- unique(data.frame(summer_medal_gold$NOC, summer_medal_gold$region))
+gold_comp3$NOC = gold_comp3$summer_medal_gold.NOC
+
+gold_comp = merge(gold_comp, gold_comp3, by = 'NOC')
+gold_comp$Country <- gold_comp$summer_medal_gold.region
+
+gold_comp = gold_comp[order(gold_comp$GoldByPopulation, decreasing=T),]
+gold_pop = data.frame(gold_comp$Country, gold_comp$GoldByPopulation)
+gold_pop = gold_pop[0:15,]
+gold_pop$Country = gold_pop$gold_comp.Country
+gold_pop$GoldByPopulation = gold_pop$gold_comp.GoldByPopulation
+gold_pop_plot = ggplot(gold_pop, aes(x=Country, y=GoldByPopulation)) + geom_bar(stat='identity', fill = 'gold')
+gold_pop_plot + theme(axis.text.x = element_text(angle = 90, hjust = 1), axis.title.y=element_text(size=7.5)) +   scale_x_discrete(limits=gold_pop$Country) + xlab('') + ylab('No. of Gold Medals by Population in Millions') + ggtitle('Gold Medals to Population Ratio for Countries accross all Summer olympics')
+```
+```{r}
+
+gold_comp1 <- unique(data.frame(summer_medal_gold$NOC, summer_medal_gold$GDP.per.Capita.x))
+names(gold_comp1) = c("NOC", "GDP")
+
+gold_comp = merge(gold_comp1, gold_comp2, by = 'NOC')
+gold_comp
+gold_comp <- transform(gold_comp, GoldByGDP = Number*1000/(GDP))
+gold_comp = subset(gold_comp, GoldByGDP != Inf)
+gold_comp
+gold_comp = gold_comp[order(gold_comp$GoldByGDP, decreasing=T),]
+gold_comp3 <- unique(data.frame(summer_medal_gold$NOC, summer_medal_gold$region))
+gold_comp3$NOC = gold_comp3$summer_medal_gold.NOC
+gold_comp3$Country = gold_comp3$summer_medal_gold.region
+
+gold_comp = merge(gold_comp, gold_comp3, by = 'NOC')
+gold_comp$Country <- gold_comp$summer_medal_gold
+gold_comp = subset(gold_comp, NOC != 'URS')
+gold_comp = subset(gold_comp, NOC != 'YUG')
+
+gold_comp = gold_comp[order(gold_comp$GoldByGDP, decreasing=T),]
+gold_comp$Country = gold_comp$summer_medal_gold.region
+gold_pop = data.frame(gold_comp$Country, gold_comp$GoldByGDP)
+gold_pop = gold_pop[0:9,]
+gold_pop$Country = gold_pop$gold_comp.Country
+gold_pop$GoldByGDP = gold_pop$gold_comp.GoldByGDP
+gold_pop_plot = ggplot(gold_pop, aes(x=Country, y=GoldByGDP)) + geom_bar(stat='identity', fill = 'gold')
+gold_pop_plot + theme(axis.text.x = element_text(angle = 90, hjust = 1)) +   theme(axis.text.x = element_text(angle = 90, hjust = 1), axis.title.y=element_text(size=7.5)) +   scale_x_discrete(limits=gold_pop$Country) + xlab('') + ylab(' No. of Gold Medals/GDP Per Capita(Thousands)') + ggtitle('Gold Medals to GDP Per Capita Ratio for Countries accross all Summer olympics')
+```
+
+
+
+#### 3. Host Country Advantage
+
+Until the 2016 Rio Summer Olympics (our data ends here), there were 23 host cities. Calculate whether the host nation had an advantage. That is calculate whether the host country did win more medals when the Summer Olympics was in their country compared to other times. 
+
+Note, that the 23 host cities are noted in the data but not  the countries they are located in. This happens commonly and often Wikipedia has the [kind of additional data you want for the task](https://en.wikipedia.org/wiki/Summer_Olympic_Games). To save you some time, here is a quick way to get this kind of table from Wikipedia into R:
+
+Provide a visualization of the host country advantage (or absence thereof).
+
+```{r}
+countries <- c("Greece", "France", "United States", "United Kingdom",  "Sweden",  "Belgium", "France",  "Netherlands", "United States", "Germany",  "United Kingdom",  "Finland", "Australia", "Italy", "Japan", "Mexico",  "West Germany", "Canada", "Soviet Union", "United States","South Korea", "Spain", "United States", "Australia", "Greece"   ,"China","United Kingdom",  "Brazil")
+
+host_NOCs <- c("FRG", "FRA", "USA", "GBR",  "SWE",  "BEL", "FRA",  "NED", "USA", "FRG",  "GBR",  "FIN", "AUS", "ITA", "JPN", "MEX",  "FRG", "CAN", "URS", "USA","KOR", "ESP", "USA", "AUS", "GRE"   ,"CHN","GBR",  "BRA")
+
+summer_medal = subset(summer_medal, Year != 1906)
+gold = subset(summer_medal, Medal == 'Gold')
+gold_year = table(gold$NOC, gold$Year)
+gold_year = data.frame(gold_year)
+names(gold_year) = c('NOC', 'Year', 'Number')
+years= as.factor(unique(gold$Year))
+years = sort(unique(years))
+years
+hosts = data.frame(sort(unique(years)), c("Greece", "France", "United States", "United Kingdom",  "Sweden",  "Belgium", "France",  "Netherlands", "United States", "Germany",  "United Kingdom",  "Finland", "Australia", "Italy", "Japan", "Mexico",  "West Germany", "Canada", "Soviet Union", "United States","South Korea", "Spain", "United States", "Australia", "Greece"   ,"China","United Kingdom",  "Brazil"))
+    
+
+num_year_comp = table(gold$Year, gold$NOC)
+num_year_comp = data.frame(num_year_comp)
+names(num_year_comp) = c("Year", "NOC", "Number")
+num_year_comp = subset(num_year_comp, NOC %in% c("FRG", "FRA", "USA", "GBR",  "SWE",  "BEL", "FRA",  "NED", "USA", "FRG",  "GBR",  "FIN", "AUS", "ITA", "JPN", "MEX",  "FRG", "CAN", "URS", "USA","KOR", "ESP", "USA", "AUS", "GRE"   ,"CHN","GBR",  "BRA"))
+
+olympic_hosts <- function(){
+  
+  host_row1 = subset(num_year_comp, Year == years[0])
+  host_row1 = subset(host_row1, NOC == host_NOCs[0])
+  for (i in 1:29) {
+    
+    year <- years[i]
+    NOC1 <- host_NOCs[i]
+    host_row2 = subset(num_year_comp, Year == year)
+    host_row2 = subset(host_row2, NOC == NOC1)
+    host_row1 = rbind(host_row1, host_row2)
+  }
+  return(host_row1)
+}
+
+average_golds <- function(){
+  averages = c()
+  host_row1 = subset(num_year_comp, NOC == host_NOCs[0])
+  average = mean(host_row1$Number)
+  averages = append(averages, average)
+  for (i in 1:29) {
+    NOC1 <- host_NOCs[i]
+    host_row2 = subset(num_year_comp, NOC == NOC1)
+    average = mean(host_row2$Number)
+    averages = append(averages, average)
+  }
+  return(averages)
+  }
+hosts = olympic_hosts()
+hosts
+averages = average_golds()
+length(averages)
+averages = averages[-(0:1)]
+averages
+averages = averages[-length(averages)]
+averages
+hosts$average_over_years = averages
+hosts
+library(ggplot2)
+gold_host = ggplot(hosts, aes(x=NOC)) + geom_bar(stat='identity', fill = 'gold', aes(y=Number)) + geom_bar(stat='identity', fill = 'red', aes(y=average_over_years)) + scale_x_discrete( labels = c("Greece: 1896", "France: 1900", "United States: 1904", "United Kingdom: 1908",  "Sweden: 1912",  "Belgium: 1920", "France: 1924",  "Netherlands: 1928", "United States: 1932", "Germany: 1936",  "United Kingdom: 1948",  "Finland: 1952", "Australia: 1956", "Italy: 1960", "Japan: 1964", "Mexico: 1968",  "West Germany: 1972", "Canada: 1976", "Soviet Union: 1980", "United States: 1984","South Korea: 1988", "Spain: 1992", "United States: 1996", "Australia: 2000", "Greece: 2004"   ,"China: 2008","United Kingdom: 2012",  "Brazil: 2016")) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + xlab('') + ylab('Total Number of Gold Medals won by Host')
+gold_host + theme(axis.text.x = element_text(angle = 90, hjust = 1), axis.title.y = element_text(size = 8)) +
+ggtitle('Host Country Advantage Accross all Summer Olympics')
+```
+
+Note: Red denotes the average medals earned by the host country accross all Summer Olympics. Yellow denotes the number of medals earned by the host country in the Olympics hosted by the country.
+
+
+
+#### 4. Most successful athletes
+
+a) Now, let's look at the most successful athletes. Provide a visual display of the most successful athletes of all time.
+
+```{r}
+by_athletes  = summer_medal %>%
+  group_by(Name, Medal, region)
+by_athletes = unique(by_athletes)
+by_athletes$Country = by_athletes$region
+num_athletes = table(by_athletes$Name, by_athletes$Country)
+num_athletes = data.frame(num_athletes)
+names(num_athletes) <- c("Name", 'Country', "Number")
+#sorted by number of medals
+nums_sorted = num_athletes[order(num_athletes$Number, decreasing=T),]
+nums_sorted = subset(nums_sorted, Number != 0)
+
+nums_sorted1 = nums_sorted[0:30,]
+nums_sorted1
+athletes_plot = ggplot(nums_sorted1, aes(x=reorder(Name, -Number, reverse =TRUE), y=Number, fill = Country)) + geom_bar(stat='identity')+ xlab('') + ylab('Number of Medals')
+athletes_plot + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + coord_flip() + ggtitle('Most Medals won accross all Summer Olympics, by Country(Top 30)')
+```
+
+
+b) Choose one or two additional dimensions among gender, height, weight, sport, discipline, event, year, and country to highlight an interesting pattern in the data.
+```{r}
+by_athletes  = summer_medal %>%
+  group_by(Name, Medal, Year, Sex)
+by_athletes = unique(by_athletes)
+num_athletes = table(by_athletes$Name, by_athletes$Year,by_athletes$Sex)
+num_athletes = data.frame(num_athletes)
+
+names(num_athletes) <- c("Name", 'Year',"Sex", "Number")
+nums_sorted = subset(nums_sorted, Number != 0)
+#sorted by number of medals
+nums_sorted = num_athletes[order(num_athletes$Number, decreasing=T),]
+nums_sorted1 = nums_sorted[0:30,]
+nums_sorted1$Year = substring(as.Date(nums_sorted1$Year, format = "%Y"), 0,4)
+nums_sorted1$NameYear <- paste(nums_sorted1$Name,nums_sorted1$Year)
+athletes_plot = ggplot(nums_sorted1, aes(x=reorder(NameYear, -Number), y=Number, fill = Sex)) + geom_bar(stat='identity') + xlab('') + ylab('Number of Medals won in a single year: Top 30')
+
+athletes_plot + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + ggtitle('Highest number of medals won in a single Olympics by Gender (Top 30)')
+```
+
+#### 5. Make two plots interactive
+
+Choose 2 of the plots you created above and add interactivity. Briefly describe to the editor why interactivity in these visualization is particularly helpful for a reader.
+
+1) Number of Medals by Height and Weight: Categorized by athletes who have won medals vs. those that did not. The plot allows for height and weight comparisons and shows that athletes that are outliers are more likely to win. This shows that physical characteristics play a key role in the competition. Interactivity allows for numerical information on the chart since it is hard to read.
+2) Interactivity added to the earlier plot of Number of medals awarded by gender in the top eleven countries. Interactivity allows the reader to see the exact numbers and hence make numerical comparisons.
+```{r}
+summer_medal$Country = summer_medal$region
+by_athletes  = summer_medal %>%
+  group_by(Name, Medal, Year, Country, Sex)
+by_athletes = unique(by_athletes)
+num_athletes = table(by_athletes$Name, by_athletes$Year)
+num_athletes = data.frame(num_athletes)
+names(num_athletes) <- c("Name", 'Year',"Number")
+Sex_Country = unique(data.frame(summer_medal$Name,summer_medal$Sex, summer_medal$Country, summer_medal$Height, summer_medal$Weight, summer_medal$Age))
+names(Sex_Country) <- c("Name", 'Sex',"Country", "Height", "Weight", "Age")
+num_athletes = merge(num_athletes, Sex_Country, by = 'Name')
+num_athletes$won_medal<-ifelse((num_athletes$Number>0), 1, 0)
+
+num_athletes1 = num_athletes[sample(nrow(num_athletes), 10000), ]
+
+library(ggplot2)
+library(plotly)
+
+num_athletes1$won_medal = as.factor(num_athletes1$won_medal)
+p <- plot_ly(data = num_athletes1, x = ~Weight, y = ~Height, color= ~won_medal) 
+p
+```
+
+
+```{r}
+ggplotly(sex_plot)
+```
+
+
+#### 6. Data Table
+
+Prepare a selected dataset and add a datatable to the output. Make sure the columns are clearly labelled. Select the appropriate options for the data table (e.g. search bar, sorting, column filters etc.). Suggest to the editor which kind of information you would like to provide in a data table in the online version of the article and why.
+```{r}
+summer_medal1 = data.frame(summer_medal$Name,  summer_medal$Sex, summer_medal$Country, summer_medal$Year, summer_medal$Medal, summer_medal$Event )
+summer_medal1
+names(summer_medal1) = c("Name", "Sex", "Country", "Year","Medal", "Event")
+DT <-  datatable(summer_medal1, class = 'cell-border stripe', rownames =FALSE, options = list(
+  pageLength = 10, autoWidth = TRUE
+), filter = 'top')
+
+DT
+DT:::DT2BSClass('display')
+DT:::DT2BSClass(c('compact', 'cell-border'))
+DT
+```
+
