@@ -1,5 +1,5 @@
 ---
-title: "Homework 1 - Summer Olympics"
+title: "Data Visualization - Summer Olympics"
 author: "Kalyani Subbiah"
 date: '2019-02-17'
 output:
@@ -18,9 +18,7 @@ library(dplyr)
 library(plotly)
 ```
 
-a) Combine the information in the three spreadsheets `athletes_and_events.csv`, `noc_regions.csv`, and  `gdp_pop.csv`. Note, that the `noc_regions.csv` is the set all NOC regions, while `gdp_pop.csv` only contains a snapshot of the current set of countries. You have to decide what to do with some [countries that competed under different designations in the past (e.g. Germany and Russia)](https://en.wikipedia.org/wiki/All-time_Olympic_Games_medal_table) and some defunct countries and whether and how to combine their totals. Make sure to be clear about your decisions here, so that the editor (and potentially a user of your visualizations) understands what you did.
-
-Decision: Keep original names because the boundaries of the countries often change with the name changes. For example, the Soviet Union consisted of Russia and several other countries, as did Yugoslavia. Conversely, West Germany and East Germany combined to form Germany. 
+Keep original names because the boundaries of the countries often change with the name changes. For example, the Soviet Union consisted of Russia and several other countries, as did Yugoslavia. Conversely, West Germany and East Germany combined to form Germany. 
 ```{r}
 ath = read.csv("https://raw.githubusercontent.com/qmss-gr5063-2019/course_materials/master/Exercises/03_olympics/athletes_and_events.csv?token=AeYatLKEdXzVZO7Qb6vq5MGD9tMsgut4ks5cfYcIwA%3D%3D")
 noc = read.csv("https://raw.githubusercontent.com/qmss-gr5063-2019/course_materials/master/Exercises/03_olympics/noc_regions.csv?token=AeYatOuB_ZcjRQchfHdr4hmwMuBIKnIzks5cfYcxwA%3D%3D")
@@ -32,16 +30,7 @@ master = merge(x = ath, y = noc, by = "NOC", all= TRUE)
 gdp$NOC <- gdp$Code
 master = merge(x = master, y = gdp, by = "NOC", all= TRUE)
 master= unique(master)
-```
-
-
-
-b) Calculate a summary of how many summer games each country competed in, and how many medals of each type the country won. Use that summary to provide a **visual comparison of medal count by country**. 
-
-Feel free to focus on smaller set of countries (say the top 10), highlight the United States or another country of your choice, consider gender of the medal winners etc. to make the visualization interesting. 
-
-Please provide one visualization showing an over time comparison and one in which a total medal count (across all Summer Olympics) is used. Briefly discuss which visualization you recommend to your editor and why.
-
+``` 
 -------
 How many summer games did each country commpete in?
 ```{r}
@@ -125,16 +114,6 @@ year_plot1 + theme(axis.text.x = element_text(angle = 90, hjust = 1))   + xlab('
 ```
 #### 2. Medal Counts adjusted by Population, GDP
 
-There are different ways to calculate "success". Consider the following variants and choose one (and make sure your choice is clear in the visualization):  
-  - Just consider gold medals.  
-  - Simply add up the number of medals of different types.    
-  - Create an index in which medals are valued differently. (gold=3, silver=2, bronze=1).   
-  - A reasonable other way that you prefer.
-  
-Now, adjust the ranking of medal success by (a) GDP per capita and (b) population. You have now three rankings: unadjusted ranking, adjusted by GDP per capita, and adjusted by population.
-
-Visualize how these rankings differ. Feel free to highlight a specific pattern (e.g. "South Korea -- specialization reaps benefits" or "The superpowers losing their grip").
-
 ```{r}
 num_year_comp = table(summer_medal$Year, summer_medal$Medal, summer_medal$NOC)
 num_year_comp = data.frame(num_year_comp)
@@ -210,11 +189,6 @@ gold_pop_plot + theme(axis.text.x = element_text(angle = 90, hjust = 1)) +   the
 
 #### 3. Host Country Advantage
 
-Until the 2016 Rio Summer Olympics (our data ends here), there were 23 host cities. Calculate whether the host nation had an advantage. That is calculate whether the host country did win more medals when the Summer Olympics was in their country compared to other times. 
-
-Note, that the 23 host cities are noted in the data but not  the countries they are located in. This happens commonly and often Wikipedia has the [kind of additional data you want for the task](https://en.wikipedia.org/wiki/Summer_Olympic_Games). To save you some time, here is a quick way to get this kind of table from Wikipedia into R:
-
-Provide a visualization of the host country advantage (or absence thereof).
 
 ```{r}
 countries <- c("Greece", "France", "United States", "United Kingdom",  "Sweden",  "Belgium", "France",  "Netherlands", "United States", "Germany",  "United Kingdom",  "Finland", "Australia", "Italy", "Japan", "Mexico",  "West Germany", "Canada", "Soviet Union", "United States","South Korea", "Spain", "United States", "Australia", "Greece"   ,"China","United Kingdom",  "Brazil")
@@ -287,7 +261,6 @@ Note: Red denotes the average medals earned by the host country accross all Summ
 
 #### 4. Most successful athletes
 
-a) Now, let's look at the most successful athletes. Provide a visual display of the most successful athletes of all time.
 
 ```{r}
 by_athletes  = summer_medal %>%
@@ -328,12 +301,9 @@ athletes_plot = ggplot(nums_sorted1, aes(x=reorder(NameYear, -Number), y=Number,
 athletes_plot + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + ggtitle('Highest number of medals won in a single Olympics by Gender (Top 30)')
 ```
 
-#### 5. Make two plots interactive
+#### 5. Interactivity
 
-Choose 2 of the plots you created above and add interactivity. Briefly describe to the editor why interactivity in these visualization is particularly helpful for a reader.
 
-1) Number of Medals by Height and Weight: Categorized by athletes who have won medals vs. those that did not. The plot allows for height and weight comparisons and shows that athletes that are outliers are more likely to win. This shows that physical characteristics play a key role in the competition. Interactivity allows for numerical information on the chart since it is hard to read.
-2) Interactivity added to the earlier plot of Number of medals awarded by gender in the top eleven countries. Interactivity allows the reader to see the exact numbers and hence make numerical comparisons.
 ```{r}
 summer_medal$Country = summer_medal$region
 by_athletes  = summer_medal %>%
@@ -365,7 +335,6 @@ ggplotly(sex_plot)
 
 #### 6. Data Table
 
-Prepare a selected dataset and add a datatable to the output. Make sure the columns are clearly labelled. Select the appropriate options for the data table (e.g. search bar, sorting, column filters etc.). Suggest to the editor which kind of information you would like to provide in a data table in the online version of the article and why.
 ```{r}
 summer_medal1 = data.frame(summer_medal$Name,  summer_medal$Sex, summer_medal$Country, summer_medal$Year, summer_medal$Medal, summer_medal$Event )
 summer_medal1
